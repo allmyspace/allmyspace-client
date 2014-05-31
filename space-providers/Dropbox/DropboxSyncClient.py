@@ -8,10 +8,10 @@ class DropboxSyncClient:
     def upload_file(self, dropbox_file_path, local_file_path, replace = False):
         f = open(local_file_path, 'rb')
         response = self._client.put_file(dropbox_file_path, f, replace)
-        return response
+        return response['path']
 
     def generate_public_url(self, dropbox_file_path):
-        return self._client.share(path)['url']
+        return self._client.share(dropbox_file_path)['url']
 
     def delete_file(self, dropbox_file_path):
         self._client.file_delete(dropbox_file_path)
