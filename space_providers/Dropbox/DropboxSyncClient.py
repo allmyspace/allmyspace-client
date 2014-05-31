@@ -5,7 +5,7 @@ class DropboxSyncClient:
     def __init__(self, oauth2_access_token):
         self._client = DropboxClient(oauth2_access_token) 
 
-    def upload_file(self, dropbox_file_path, local_file_path, replace = False):
+    def upload_file(self, dropbox_file_path, local_file_path, replace=False):
         f = open(local_file_path, 'rb')
         response = self._client.put_file(dropbox_file_path, f, replace)
         return response['path']
@@ -17,7 +17,7 @@ class DropboxSyncClient:
         self._client.file_delete(dropbox_file_path)
 
     def update_local_to_cloud(self, dropbox_file_path, local_file_path):
-        return self.upload_file(dropbox_file_path, local_file_path, True)        
+        return self.upload_file(dropbox_file_path, local_file_path, replace=True)
 
     def update_cloud_to_local(self, dropbox_file_path, local_file_path):
         open(local_file_path, 'wb').write(self._client.get_file(dropbox_file_path).read())

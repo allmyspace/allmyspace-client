@@ -47,8 +47,12 @@ class DAL:
 
     def get_file_mappings(self, local_path):
         cursor = self.connection.cursor()
-        query = ("SELECT local_path, remote_path, is_shared, share_link FROM " + self.FILE_MAPPINGS_TABLE +
+        query = ("SELECT local_path, remote_path, is_shared, share_link, provider FROM " + self.FILE_MAPPINGS_TABLE +
                  " WHERE local_path = '{}'").format(local_path)
         cursor.execute(query)
         row = cursor.fetchone()
         return row
+
+    def delete_file(self, local_path):
+        cursor = self.connection.cursor()
+        cursor.execute("DELETE FROM " + self.FILE_MAPPINGS_TABLE + " WHERE local_path =  '{}'".format(local_path))
