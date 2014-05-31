@@ -3,6 +3,12 @@
 
 import sqlite3
 
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
 class DAL:
 
     DB_FILE = 'allmyspace.db'
@@ -10,6 +16,7 @@ class DAL:
 
     def __init__(self):
         self.connection = sqlite3.connect(self.DB_FILE, isolation_level=None)
+        self.connection.row_factory = dict_factory
         self.create_tables()
 
     def create_tables(self):
@@ -40,8 +47,8 @@ class DAL:
 
     def get_file_mappings(self, local_path):
         cursor = self.connection.cursor()
-        query = "SELECT local_path, remote_path, is_shared, share_link FROM " + self.FILE_MAPPINGS_TABLE +\
-                " WHERE local_path = ?"
-        cursor.execute(query, local_path)
+        query = ("SELECT local_path, remote_path, is_shared, share_link FROM " + self.FILE_MAPPINGS_TABLE +
+                 " WHERE local_path = '{}'").format(local_path)
+        cursor.execute(query)
         row = cursor.fetchone()
         return row
