@@ -9,7 +9,7 @@ options = {
     'event-mask': pyinotify.IN_ATTRIB | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_CREATE | pyinotify.IN_DELETE | pyinotify.IN_DELETE_SELF | pyinotify.IN_MODIFY | pyinotify.IN_MOVE_SELF | pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO
 }
 
-DROPBOX_OAUTH_TOKEN = 'H_B72WwFl4EAAAAAAAAS_eSfE3YjWsZjkB68rfjVe_CF9mLvyVtgfP-bR5qpU4cz'
+DROPBOX_OAUTH_TOKEN = ''
 DROPBOX_HOME_DIRECTORY = '/AllMySpace'
 
 PROVIDER_DROPBOX = 'dropbox'
