@@ -108,6 +108,7 @@ class AllMySpaceService:
     def get_all_access_tokens(self):
         url = API_URL_PREFIX + GET_ALL_TOKENS_PATH + "/" + self.userid
         r = requests.get(url)
+        sys.stderr.write(r.text)
         jsonr = r.json()
         for provider in jsonr:
             if provider in AllMySpaceService.providers:
@@ -122,21 +123,22 @@ class AllMySpaceService:
             r = requests.get(url)
             return json.loads(r.text)
 
-    def post_create_file(self, local_filepath, remote_filepath, provider):
+    def post_create_file(self, local_filepath, remote_filepath, provider, creation_time):
         url = API_URL_PREFIX + POST_CREATE_FILE_PATH + "/" + provider
-        creation_time = os.path.getmtime(local_filepath)
         post_data = {
             "uid": self.userid,
             "lid": local_filepath,
             "rid": remote_filepath,
             "ct": creation_time
         }
+        sys.stderr.write("Sending create request\n")
+        print post_data
         r = requests.post(url, data=json.dumps(post_data), headers=JSON_HEADER)
+        print r
         return r.status_code == requests.codes.ok
 
-    def post_modify_file(self, local_filepath, provider):
+    def post_modify_file(self, local_filepath, provider, modification_time):
         url = API_URL_PREFIX + POST_MODIFY_FILE_PATH + "/" + provider
-        modification_time =  os.path.getmtime(local_filepath)
         post_data = {
             "uid": self.userid,
             "lid": local_filepath,

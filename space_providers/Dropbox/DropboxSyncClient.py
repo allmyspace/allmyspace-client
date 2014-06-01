@@ -40,3 +40,7 @@ class DropboxSyncClient:
 
     def set_access_token(self, access_token):
         self._client = DropboxClient(access_token)
+
+    def get_remaining_space(self):
+        quota_info = self._client.account_info()['quota_info']
+        return quota_info['total'] - (quota_info['shared'] + quota_info['normal'])
