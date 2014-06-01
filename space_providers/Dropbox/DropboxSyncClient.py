@@ -1,7 +1,6 @@
 from dropbox.client import DropboxClient
 
 class DropboxSyncClient:
-    
     def __init__(self, oauth2_access_token):
         self._client = DropboxClient(oauth2_access_token) 
 

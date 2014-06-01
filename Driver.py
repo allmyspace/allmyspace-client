@@ -1,10 +1,11 @@
 import sys
 import os.path
 import pyinotify
+from AllMySpaceService import AllMySpaceService
 from space_providers.Dropbox import DropboxSyncClient
 from DAL import DAL
 
-options = {
+settings = {
     'watch-manager': None,
     'event-mask': pyinotify.IN_ATTRIB | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_CREATE | pyinotify.IN_DELETE | pyinotify.IN_DELETE_SELF | pyinotify.IN_MODIFY | pyinotify.IN_MOVE_SELF | pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO
 }
@@ -15,19 +16,22 @@ DROPBOX_HOME_DIRECTORY = '/AllMySpace'
 PROVIDER_DROPBOX = 'dropbox'
 PROVIDER_BOX     = 'box'
 
-dal = DAL()
 
 def get_path_relative_to_watched_directory(original_path):
     global root_dir_path
     relative_path = ''
     if original_path.startswith(root_dir_path):
         relative_path = original_path[len(root_dir_path):]
-    if relative_path.startswith('/'): return relative_path
-    else : return '/' + relative_path
+    if relative_path.startswith('/'):
+        return relative_path
+    else:
+        return '/' + relative_path
+
 
 def get_dropbox_relative_path(relative_path):
     global DROPBOX_HOME_DIRECTORY
     return DROPBOX_HOME_DIRECTORY + relative_path
+
 
 class EventHandler(pyinotify.ProcessEvent):
 
@@ -43,30 +47,38 @@ class EventHandler(pyinotify.ProcessEvent):
     def process_IN_CREATE(self, event):
         self._file_object.write('%s: created at path %s\n' % (event.name, event.pathname))
         if os.path.isdir(event.pathname) and (not os.path.islink(event.pathname)):
-            os.path.walk(event.pathname, visit, options)
+            os.path.walk(event.pathname, visit, settings)
             return
 
         try:
-            #TODO: Choose which one to call
-            relative_path = get_path_relative_to_watched_directory(event.pathname)
-            remote_path = dropbox_client.upload_file(get_dropbox_relative_path(relative_path), event.pathname)
-            dal.add_file(relative_path, remote_path, PROVIDER_DROPBOX)
+            #TODO: Choose the service below
+            provider = 'dropbox'
+            if provider in AllMySpaceService.providers:
+                relative_path = get_path_relative_to_watched_directory(event.pathname)
+                (status, remote_path) = settings['all-my-space-service'].execute_service('REMOTE_CREATE', get_dropbox_relative_path(relative_path), event.pathname, provider)
+                settings['dal'].add_file(relative_path, remote_path, PROVIDER_DROPBOX)
+                settings['all-my-space-service'].post_create_file(event.pathname, remote_path, provider)
+            else:
+                self.file_object.write("Unrecognized provider %s" % provider)
 
         except Exception as e:
             print e
 
     def process_IN_DELETE(self, event):
         self._file_object.write('%s: deleted at path %s\n' % (event.name, event.pathname))
-        if os.path.isdir(event.pathname) and (not os.path.islink(event.pathname)):
+        if os.path.isdir(event.pathname) or os.path.islink(event.pathname):
             return
         try:
-
             relative_path = get_path_relative_to_watched_directory(event.pathname)
-            db_entry = dal.get_file_mappings(relative_path)
+            db_entry = settings['dal'].get_file_mappings(relative_path)
             print relative_path
-            if db_entry['provider'] == PROVIDER_DROPBOX:
-                dropbox_client.delete_file(db_entry['remote_path'])
-            dal.delete_file(relative_path)
+            provider = db_entry['provider']
+            if provider in AllMySpaceService.providers:
+                settings['all-my-space-service'].execute_service('REMOTE_DELETE', db_entry['remote_path'], event.pathname, provider)
+            else:
+                self.file_object.write("Unrecognized provider %s" % provider)
+            settings['dal'].delete_file(relative_path)
+            settings['all-my-space-service'].post_delete_file(event.pathname)
 
         except Exception as e:
             print e
@@ -79,13 +91,15 @@ class EventHandler(pyinotify.ProcessEvent):
 
     def process_IN_MODIFY(self, event):
         self._file_object.write('%s: modified at path %s\n' % (event.name, event.pathname))
-        if os.path.isdir(event.pathname) and (not os.path.islink(event.pathname)):
+        if os.path.isdir(event.pathname) or os.path.islink(event.pathname):
                 return
         try:
             relative_path = get_path_relative_to_watched_directory(event.pathname)
-            db_entry = dal.get_file_mappings(relative_path)
-            if db_entry['provider'] == PROVIDER_DROPBOX:
-                dropbox_client.update_local_to_cloud(db_entry['remote_path'], event.pathname)
+            db_entry = settings['dal'].get_file_mappings(relative_path)
+            provider = db_entry['provider']
+            for provider in AllMySpaceService.providers:
+                settings['all-my-space-service'].execute_service('REMOTE_UPDATE', db_entry['remote_path'], event.pathname, provider)
+                settings['all-my-space-service'].post_modify_file(event.pathname, provider)
         except Exception as e:
             print e
 
@@ -94,43 +108,43 @@ class EventHandler(pyinotify.ProcessEvent):
 
     def process_IN_MOVED_FROM(self, event):
         self._file_object.write('%s: moved at path %s with cookie = %s\n' % (event.name, event.pathname, event.cookie))
-        if os.path.isdir(event.pathname) and (not os.path.islink(event.pathname)):
-            return
-        relative_path = get_path_relative_to_watched_directory(event.pathname)
-        try:
-            db_entry = dal.get_file_mappings(relative_path)
-            if db_entry['provider'] == PROVIDER_DROPBOX:
-                dropbox_client.delete_file(db_entry['remote_path'])
-                dal.delete_file(relative_path)
-        except Exception as e:
-            print e
+        self.process_IN_DELETE(event)
 
     def process_IN_MOVED_TO(self, event):
         self._file_object.write('%s: moved from %s to %s with cookie %s\n' % (event.name, event.src_pathname, event.pathname, event.cookie))
         self.process_IN_CREATE(event)
 
     def process_default(self, event):
-        test='test'
+        self._file_object.write('Default event processing ...')
 
 
-def visit(options, dirname, names):
+def visit(settings, dirname, names):
     if not os.path.islink(dirname):
-        options['watch-manager'].add_watch(dirname, options['event-mask'])
+        settings['watch-manager'].add_watch(dirname, settings['event-mask'])
 
 if __name__ == '__main__':
-    dropbox_client = DropboxSyncClient(DROPBOX_OAUTH_TOKEN)
+    #dropbox_client = DropboxSyncClient(DROPBOX_OAUTH_TOKEN)
     argsLen = len(sys.argv)
     if argsLen != 2:
         print("Usage: driver.py <allmyspace directory>")
         sys.exit(0)
     else:
+        userid = str(raw_input("enter username: "))
         root_dir_path = str(sys.argv[1])
         if os.path.exists(root_dir_path) and (not os.path.islink(root_dir_path)) and os.path.isdir(root_dir_path):
-            wm = pyinotify.WatchManager()
-            options['watch-manager'] = wm
-            os.path.walk(root_dir_path, visit, options)
-            eventHandler = EventHandler()
-            notifier = pyinotify.Notifier(wm, default_proc_fun=eventHandler)
+            settings['dal'] = DAL()
+
+            print("Syncing %s with the cloud ... " % root_dir_path)
+            all_my_space_service = AllMySpaceService(settings['dal'], userid)
+            settings['all-my-space-service'] = all_my_space_service
+            all_my_space_service.get_file_system_updates()
+
+            watch_manager = pyinotify.WatchManager()
+            settings['watch-manager'] = watch_manager
+            os.path.walk(root_dir_path, visit, settings)
+
+            event_handler = EventHandler()
+            notifier = pyinotify.Notifier(watch_manager, default_proc_fun=event_handler)
             try:
                 notifier.loop()
             except pyinotify.NotifierError, err:
