@@ -65,7 +65,8 @@ class DAL:
         cursor.execute("SELECT last_modified_time FROM " + self.FILE_MAPPINGS_TABLE + " WHERE local_path = '"+ local_path + "'")
         row = cursor.fetchone()
         cursor.close()
-        return row['last_modified_time']
+        if row is None: return None
+        else : return row['last_modified_time']
 
     def get_share_status(self, local_path):
         cursor = self.connection.cursor()
