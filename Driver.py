@@ -15,7 +15,7 @@ DROPBOX_HOME_DIRECTORY = '/AllMySpace'
 
 PROVIDER_DROPBOX = 'dropbox'
 PROVIDER_BOX     = 'box'
-
+POLL_EVENT_FILENAME = ".poll"
 
 def get_path_relative_to_watched_directory(original_path):
     global root_dir_path
@@ -90,17 +90,20 @@ class EventHandler(pyinotify.ProcessEvent):
 
     def process_IN_MODIFY(self, event):
         self._file_object.write('%s: modified at path %s\n' % (event.name, event.pathname))
-        if os.path.isdir(event.pathname) or os.path.islink(event.pathname):
-                return
-        try:
-            relative_path = get_path_relative_to_watched_directory(event.pathname)
-            db_entry = settings['dal'].get_file_mappings(relative_path)
-            provider = db_entry['provider']
-            for provider in AllMySpaceService.providers:
-                settings['all-my-space-service'].execute_service('REMOTE_UPDATE', db_entry['remote_path'], relative_path, provider)
-                settings['all-my-space-service'].post_modify_file(event.pathname, provider)
-        except Exception as e:
-            print e
+        if event.pathname == root_dir_path + POLL_EVENT_FILENAME:
+            settings['all-my-space-service'].get_file_system_updates()
+        else:
+            if os.path.isdir(event.pathname) or os.path.islink(event.pathname):
+                    return
+            try:
+                relative_path = get_path_relative_to_watched_directory(event.pathname)
+                db_entry = settings['dal'].get_file_mappings(relative_path)
+                provider = db_entry['provider']
+                for provider in AllMySpaceService.providers:
+                    settings['all-my-space-service'].execute_service('REMOTE_UPDATE', db_entry['remote_path'], relative_path, provider)
+                    settings['all-my-space-service'].post_modify_file(event.pathname, provider)
+            except Exception as e:
+                print e
 
     def process_IN_MOVE_SELF(self, event):
         test='test'
