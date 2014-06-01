@@ -35,7 +35,7 @@ class DAL:
         insert_query = "INSERT INTO " + self.FILE_MAPPINGS_TABLE +\
                        "(local_path, remote_path, provider, is_shared, share_link, last_modified_time)" +\
                        "VALUES(?, ? , ?, ?, ?, ?)"
-        cursor.execute(insert_query, (local_path, remote_path, provider, is_shared, share_link, last_modified_time))
+        cursor.execute(insert_query, (local_path, remote_path, provider, is_shared, share_link, int(last_modified_time)))
         cursor.close()
 
     def set_share_status(self, local_path, is_shared, share_link):
@@ -65,7 +65,7 @@ class DAL:
         cursor.execute("SELECT last_modified_time FROM " + self.FILE_MAPPINGS_TABLE + " WHERE local_path = '"+ local_path + "'")
         row = cursor.fetchone()
         cursor.close()
-        if row is None: return None
+        if row is None : return None
         else : return row['last_modified_time']
 
     def get_share_status(self, local_path):
