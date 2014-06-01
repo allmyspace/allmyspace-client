@@ -50,7 +50,7 @@ class EventHandler(pyinotify.ProcessEvent):
             #TODO: Choose which one to call
             relative_path = get_path_relative_to_watched_directory(event.pathname)
             remote_path = dropbox_client.upload_file(get_dropbox_relative_path(relative_path), event.pathname)
-            dal.add_file(relative_path, remote_path, PROVIDER_DROPBOX)
+            dal.add_file(relative_path, remote_path, PROVIDER_DROPBOX, int(os.path.getmtime(event.pathname)))
 
         except Exception as e:
             print e
