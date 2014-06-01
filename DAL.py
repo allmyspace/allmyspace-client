@@ -74,3 +74,7 @@ class DAL:
         row = cursor.fetchone()
         cursor.close()
         return row
+
+    def update_last_modified_time(self, local_path, updated_time):
+        cursor = self.connection.cursor()
+        cursor.execute("UPDATE " + self.FILE_MAPPINGS_TABLE + " SET last_modified_time = " + int(updated_time) + " WHERE local_path = {}".format(local_path))

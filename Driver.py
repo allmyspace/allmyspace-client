@@ -53,13 +53,20 @@ class EventHandler(pyinotify.ProcessEvent):
 
         try:
             #TODO: Choose the service below
-            provider = 'box'
+            provider = ''
+
+            if AllMySpaceService.services['dropbox'].get_remaining_space > os.path.getsize(event.pathname):
+                provider = 'dropbox'
+            else:
+                provider = 'box'
+
             if provider in AllMySpaceService.providers:
                 relative_path = get_path_relative_to_watched_directory(event.pathname)
                 (status, remote_path) = settings['all-my-space-service'].execute_service('REMOTE_CREATE', get_provider_relative_path(relative_path), relative_path, provider)
                 sys.stderr.write("here\n")
-                settings['dal'].add_file(relative_path, remote_path, provider, os.path.getmtime(event.pathname))
-                settings['all-my-space-service'].post_create_file(event.pathname, remote_path, provider)
+                creation_time = int(os.path.getmtime(event.pathname))
+                settings['dal'].add_file(relative_path, remote_path, provider, creation_time)
+                settings['all-my-space-service'].post_create_file(relative_path, remote_path, provider, creation_time)
             else:
                 self.file_object.write("Unrecognized provider %s" % provider)
         except Exception as e:
@@ -78,7 +85,7 @@ class EventHandler(pyinotify.ProcessEvent):
             else:
                 self.file_object.write("Unrecognized provider %s" % provider)
             settings['dal'].delete_file(relative_path)
-            settings['all-my-space-service'].post_delete_file(event.pathname, provider)
+            settings['all-my-space-service'].post_delete_file(relative_path, provider)
 
         except Exception as e:
             print e
@@ -92,19 +99,20 @@ class EventHandler(pyinotify.ProcessEvent):
     def process_IN_MODIFY(self, event):
         time.sleep(1)
         self._file_object.write('%s: modified at path %s\n' % (event.name, event.pathname))
-
         if event.pathname == root_dir_path + POLL_EVENT_FILENAME:
             settings['all-my-space-service'].get_file_system_updates()
         else:
             if os.path.isdir(event.pathname) or os.path.islink(event.pathname):
-                 return
+                return
             try:
                 relative_path = get_path_relative_to_watched_directory(event.pathname)
                 db_entry = settings['dal'].get_file_mappings(relative_path)
                 provider = db_entry['provider']
                 if provider in AllMySpaceService.providers:
+                    modification_time =  int(os.path.getmtime(event.pathname))
                     settings['all-my-space-service'].execute_service('REMOTE_UPDATE', db_entry['remote_path'], relative_path, provider)
-                    settings['all-my-space-service'].post_modify_file(event.pathname, provider)
+                    settings['dal'].up
+                    settings['all-my-space-service'].post_modify_file(relative_path, provider, modification_time)
             except Exception as e:
                 print e
 
@@ -116,7 +124,7 @@ class EventHandler(pyinotify.ProcessEvent):
         self.process_IN_DELETE(event)
 
     def process_IN_MOVED_TO(self, event):
-        self._file_object.write('%s: moved from %s to %s with cookie %s\n' % (event.name, event.src_pathname, event.pathname, event.cookie))
+        self._file_object.write('%s: moved to %s with cookie %s\n' % (event.name, event.pathname, event.cookie))
         self.process_IN_CREATE(event)
 
     def process_default(self, event):
@@ -128,7 +136,7 @@ def visit(settings, dirname, names):
         settings['watch-manager'].add_watch(dirname, settings['event-mask'])
 
 if __name__ == '__main__':
-    #dropbox_client = DropboxSyncClient(DROPBOX_OAUTH_TOKEN)
+
     argsLen = len(sys.argv)
     if argsLen != 2:
         print("Usage: driver.py <allmyspace directory>")
