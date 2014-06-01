@@ -26,18 +26,19 @@ class DAL:
                        "    remote_path TEXT, " +
                        "    provider TEXT, " +
                        "    is_shared INTEGER, " +
-                       "    share_link TEXT)")
+                       "    share_link TEXT, "
+                       "    last_modified_time INTEGER)")
         cursor.close()
 
-    def add_file(self, local_path, remote_path, provider, is_shared = 0, share_link = None):
+    def add_file(self, local_path, remote_path, provider, last_modified_time, is_shared = 0, share_link = None):
         cursor = self.connection.cursor()
         insert_query = "INSERT INTO " + self.FILE_MAPPINGS_TABLE +\
-                       "(local_path, remote_path, provider, is_shared, share_link)" +\
-                       "VALUES(?, ? , ?, ?, ?)"
-        cursor.execute(insert_query, (local_path, remote_path, provider, is_shared, share_link))
+                       "(local_path, remote_path, provider, is_shared, share_link, last_modified_time)" +\
+                       "VALUES(?, ? , ?, ?, ?, ?)"
+        cursor.execute(insert_query, (local_path, remote_path, provider, is_shared, share_link, last_modified_time))
         cursor.close()
 
-    def update_share_status(self, local_path, is_shared, share_link):
+    def set_share_status(self, local_path, is_shared, share_link):
         cursor = self.connection.cursor()
         update_query = "UPDATE " + self.FILE_MAPPINGS_TABLE +\
                        " SET is_shared = ?, share_link = ?" +\
@@ -51,8 +52,24 @@ class DAL:
                  " WHERE local_path = '{}'").format(local_path)
         cursor.execute(query)
         row = cursor.fetchone()
+        cursor.close()
         return row
 
     def delete_file(self, local_path):
         cursor = self.connection.cursor()
         cursor.execute("DELETE FROM " + self.FILE_MAPPINGS_TABLE + " WHERE local_path =  '{}'".format(local_path))
+        cursor.close()
+
+    def get_last_modified_time(self, local_path):
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT last_modified_time FROM " + self.FILE_MAPPINGS_TABLE + " WHERE local_path = '"+ local_path + "'")
+        row = cursor.fetchone()
+        cursor.close()
+        return row['last_modified_time']
+
+    def get_share_status(self, local_path):
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT is_shared, share_link FROM " + self.FILE_MAPPINGS_TABLE + " WHERE local_path = '{}'".format(local_path))
+        row = cursor.fetchone()
+        cursor.close()
+        return row
