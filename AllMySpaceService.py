@@ -37,17 +37,24 @@ class AllMySpaceService:
         "box": None
     }
 
-    def __init__(self, dal, userid, logfile=sys.stdout):
+    def __init__(self, dal, userid, root_dir_path, logfile=sys.stdout):
         self.dal = dal
         self.userid = userid
+        self.root_dir_path = root_dir_path
         self.logfile = logfile
         self.access_tokens = {}
-        self.get_all_access_tokens()
+
+        #TODO Remove me
+        #self.get_all_access_tokens()
+        self.access_tokens = {
+            "dropbox": "rAX94T5w5c4AAAAAAAAAEA6kAVmrZTCovpUGYTSKVXz3oUHiiw23CMpbyZPQcM4B"
+        }
 
         AllMySpaceService.services["dropbox"] = DropboxSyncClient(self.access_tokens["dropbox"])
         #services["box"] = BoxSyncClient(self.access_tokens["box"])
 
     def execute_service(self, service, remote_filepath, local_filepath, provider):
+        local_filepath = self.root_dir_path + local_filepath[1:]
         service_rpc = {
             'REMOTE_DELETE': AllMySpaceService.services[provider].delete_file,
             'REMOTE_CREATE': AllMySpaceService.services[provider].upload_file,
@@ -88,11 +95,13 @@ class AllMySpaceService:
                     local_modified_time = self.dal.get_last_modified_time(local_filepath)
                     if local_modified_time is None:
                         self.logfile.write("[" + self.__class__.__name__ + "] creating file %s from cloud to local" % local_filepath)
-                        self.execute_service(self, "LOCAL_CREATE", remote_filepath, local_filepath, provider)
+
+                        self.execute_service("LOCAL_CREATE", remote_filepath, local_filepath, provider)
                     elif local_modified_time < remote_modified_time:
                         self.logfile.write("Updating file %s from cloud to local" % local_filepath)
-                        self.execute_service(self, "LOCAL_UPDATE", remote_filepath, local_filepath, provider)
-                        share_status = self.dal.get_share_status(local_filepath)
+                        self.execute_service("LOCAL_UPDATE", remote_filepath, local_filepath, provider)
+
+                    share_status = self.dal.get_share_status(local_filepath)
                     if share_status is None and share_link is not None:
                         self.dal.set_share_status(local_filepath)
             else:

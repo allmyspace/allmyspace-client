@@ -55,12 +55,11 @@ class EventHandler(pyinotify.ProcessEvent):
             provider = 'dropbox'
             if provider in AllMySpaceService.providers:
                 relative_path = get_path_relative_to_watched_directory(event.pathname)
-                (status, remote_path) = settings['all-my-space-service'].execute_service('REMOTE_CREATE', get_dropbox_relative_path(relative_path), event.pathname, provider)
+                (status, remote_path) = settings['all-my-space-service'].execute_service('REMOTE_CREATE', get_dropbox_relative_path(relative_path), relative_path, provider)
                 settings['dal'].add_file(relative_path, remote_path, PROVIDER_DROPBOX)
                 settings['all-my-space-service'].post_create_file(event.pathname, remote_path, provider)
             else:
                 self.file_object.write("Unrecognized provider %s" % provider)
-
         except Exception as e:
             print e
 
@@ -74,7 +73,7 @@ class EventHandler(pyinotify.ProcessEvent):
             print relative_path
             provider = db_entry['provider']
             if provider in AllMySpaceService.providers:
-                settings['all-my-space-service'].execute_service('REMOTE_DELETE', db_entry['remote_path'], event.pathname, provider)
+                settings['all-my-space-service'].execute_service('REMOTE_DELETE', db_entry['remote_path'], relative_path, provider)
             else:
                 self.file_object.write("Unrecognized provider %s" % provider)
             settings['dal'].delete_file(relative_path)
@@ -98,7 +97,7 @@ class EventHandler(pyinotify.ProcessEvent):
             db_entry = settings['dal'].get_file_mappings(relative_path)
             provider = db_entry['provider']
             for provider in AllMySpaceService.providers:
-                settings['all-my-space-service'].execute_service('REMOTE_UPDATE', db_entry['remote_path'], event.pathname, provider)
+                settings['all-my-space-service'].execute_service('REMOTE_UPDATE', db_entry['remote_path'], relative_path, provider)
                 settings['all-my-space-service'].post_modify_file(event.pathname, provider)
         except Exception as e:
             print e
@@ -135,7 +134,7 @@ if __name__ == '__main__':
             settings['dal'] = DAL()
 
             print("Syncing %s with the cloud ... " % root_dir_path)
-            all_my_space_service = AllMySpaceService(settings['dal'], userid)
+            all_my_space_service = AllMySpaceService(settings['dal'], userid, root_dir_path)
             settings['all-my-space-service'] = all_my_space_service
             all_my_space_service.get_file_system_updates()
 
