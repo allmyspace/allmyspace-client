@@ -3,8 +3,9 @@ import os.path
 import json
 import requests
 from space_providers.Dropbox import DropboxSyncClient
+from space_providers.box.BoxSyncClient import BoxSyncClient
 
-API_URL_PREFIX = "http://" + "172.16.136.72:8080" + "/api"
+API_URL_PREFIX = "http://" + "10.228.152.31:8080" + "/api"
 GET_ALL_TOKENS_PATH = "/tokens"
 GET_TOKEN_PATH = "/token"
 GET_FS_TREE_PATH = "/directory"
@@ -44,14 +45,10 @@ class AllMySpaceService:
         self.logfile = logfile
         self.access_tokens = {}
 
-        #TODO Remove me
-        #self.get_all_access_tokens()
-        self.access_tokens = {
-            "dropbox": "rAX94T5w5c4AAAAAAAAAEA6kAVmrZTCovpUGYTSKVXz3oUHiiw23CMpbyZPQcM4B"
-        }
+        self.get_all_access_tokens()
 
         AllMySpaceService.services["dropbox"] = DropboxSyncClient(self.access_tokens["dropbox"])
-        #services["box"] = BoxSyncClient(self.access_tokens["box"])
+        AllMySpaceService.services["box"]     = BoxSyncClient(self.access_tokens["box"])
 
     def execute_service(self, service, remote_filepath, local_filepath, provider):
         local_filepath = self.root_dir_path + local_filepath[1:]
@@ -68,7 +65,7 @@ class AllMySpaceService:
             (status, msg) = service_rpc[service](remote_filepath)
         else:
             (status, msg) = service_rpc[service](remote_filepath, local_filepath)
-
+        print  status, msg
         if status == AllMySpaceService.service_status["INVALID_ACCESS_TOKEN"]:
             access_token = self.get_access_token(provider)
             service_rpc["SET_ACCESS_TOKEN"](access_token)
@@ -78,6 +75,7 @@ class AllMySpaceService:
                 (status, msg) = service_rpc[service](remote_filepath, local_filepath)
             if status != AllMySpaceService.service_status["OK"]:
                 self.logfile.write("%s encountered %s in %s operation on file %s from cloud to local" % (provider, status, service, local_filepath))
+        return status,msg
 
     def get_file_system_updates(self):
         url = API_URL_PREFIX + GET_FS_TREE_PATH + "/" + self.userid

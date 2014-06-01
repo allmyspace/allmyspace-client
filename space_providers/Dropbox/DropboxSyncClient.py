@@ -3,12 +3,11 @@ import os
 
 class DropboxSyncClient:
     def __init__(self, oauth2_access_token):
+        self.access_token = oauth2_access_token
         self._client = DropboxClient(oauth2_access_token) 
 
     def upload_file(self, dropbox_file_path, local_file_path, replace=False):
-        print dropbox_file_path, local_file_path
         f = open(local_file_path, 'rb')
-        print f
         response = self._client.put_file(dropbox_file_path, f, replace)
         return 1, response['path']
 
