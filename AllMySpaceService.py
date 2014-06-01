@@ -80,7 +80,9 @@ class AllMySpaceService:
     def get_file_system_updates(self):
         url = API_URL_PREFIX + GET_FS_TREE_PATH + "/" + self.userid
         r = requests.get(url)
+        print "r = %s" % r
         jsonr = r.json()
+        print "jsonr = %s" % jsonr
         for provider in jsonr:
             if provider in AllMySpaceService.providers:
                 #access_token = self.access_tokens[provider]

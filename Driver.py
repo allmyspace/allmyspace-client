@@ -92,12 +92,12 @@ class EventHandler(pyinotify.ProcessEvent):
     def process_IN_MODIFY(self, event):
         time.sleep(1)
         self._file_object.write('%s: modified at path %s\n' % (event.name, event.pathname))
-        
+
         if event.pathname == root_dir_path + POLL_EVENT_FILENAME:
             settings['all-my-space-service'].get_file_system_updates()
         else:
-             if os.path.isdir(event.pathname) or os.path.islink(event.pathname):
-                return
+            if os.path.isdir(event.pathname) or os.path.islink(event.pathname):
+                 return
             try:
                 relative_path = get_path_relative_to_watched_directory(event.pathname)
                 db_entry = settings['dal'].get_file_mappings(relative_path)
